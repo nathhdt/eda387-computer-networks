@@ -1,0 +1,108 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+
+%All LaTeX documents have a ``preamble'' that includes the packages and macros needed to make the document compile. The file `PomonaLgcsFormatting.tex' includes the preamble for this template. You can see it in the file list on the left frame of your screen, and this document is instructed to use it with the \input{} command below.
+
+\input{PomonaLgcsFormatting}
+
+\title{EDA387 - Lab 4.1: Value Discovery in Complete Graphs}
+\author{Nathan HAUDOT, Jinsong LI}
+\date{\today} 
+
+\begin{document}
+
+\maketitle
+
+
+\section{Introduction}
+
+The goal of this exercise is to discover an unknown value in a complete graph. Each processor has two registers $r_{i}$ and $s_{i}$. The last one being inaccessible for $p_{i}$, the goal of this exercise is to make the processor $p_{i}$ find the value of its secret register with the help of the other processors. The $r_{i}$ registers are shared in reading, and only writable by the corresponding $p_{i}$ processor.
+
+\section{Assumptions}
+
+Each processor has two registers ($r_{i}$, $s_{i}$) described as follows:
+
+\begin{itemize}
+
+\item Each $r_{i}$ register is readable by any $p_{i}$ processor, with $0 < i < n$
+
+\item Each $p_{i}$ processor can write in its own $r_{i}$ register
+
+\item Each $s_{i}$ register can not be read by its corresponding $p_{i}$ processor
+
+\item For $p_{j}$ processors such as $j\neq i$, $s_{i}$ is accessible in reading
+
+\item We will assume that every processors knows $n$, defined as the total number of processors
+
+\end{itemize}
+
+
+
+\section{Resolution}
+
+\textbf{Step 1}
+
+For each $p_{i}$ processor, we define $r_{i}$ such as:
+
+\begin{center}
+\begin{equation} \label{equation1}
+r_{i}=\sum_{\substack{j=0 \\ j\neq i}}^n s_{j}
+\end{equation}
+\end{center}
+
+\noindent\textbf{Step 2}
+
+We set a variable named $sum$ representing the sum of all the secret registers:
+
+\begin{center}
+\begin{equation} \label{equation1}
+sum=\sum_{i=0}^n s_{i}
+\end{equation}
+\end{center}
+
+Now, we can assume that for every $r_{i}$ with $0 < i < n$, $r_{i} = sum - s_{i}$. This is our first equation.
+
+\noindent\textbf{Step 3}
+
+The processors can sum all the registers together:
+
+\begin{center}
+\begin{equation} \label{equation1}
+\begin{split}
+\sum_{j=0}^n r_{j} & = (sum-s_{0})+(sum-s_{1})+...+(sum-s_{n}) \\
+     & = -(s_{0}+s_{1}+...+s_{n})+nsum \\
+     & = (n-1)sum
+\end{split}
+\end{equation}
+\end{center}
+
+Here, we assume that every $p_{i}$ processor knows the value of $n$.
+
+\noindent\textbf{Step 4}
+
+Now we have two equations with the variable $sum$, which we can transform like this:
+
+\begin{center}
+\begin{equation}
+    \begin{cases}
+      \text{$\sum_{j=0}^n r_{j} = (n-1)sum$}\\
+      \text{$r_{i}=sum-s_{i}$}
+    \end{cases}   
+    =
+    \begin{cases}
+      \text{$sum=\frac{1}{(n-1)}\sum_{j=0}^n r_{j}$}\\
+      \text{$sum=r_{i}+s_{i}$}
+    \end{cases}  
+    \longrightarrow
+    \text{$s_{i}=\frac{\sum_{\substack{j=0 \\ j\neq i}}^n r_{j}}{(n-1)}$}
+\end{equation}
+\end{center}
+
+\section{Conclusion}
+
+Therefore, each $p_{i}$ processor can compute the value of its own $s_{i}$ register with the formula (4). However, this method has a constraint: we are obliged to identify each processor during the calculation.
+
+\noindent By analyzing the method proposed in the discussions of Lab 4.1, we realized that the solution using XOR sums (and its properties) was much more powerful, and that we could retrieve the value of $s_{i}$ using any $p_{x}$ processor (with $x$ different from $i$), as well as its $r_{x}$ and $s_{x}$ registers, which avoids having to identify the processors from each other.
+
+\end{document}
