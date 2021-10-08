@@ -176,12 +176,13 @@ int main( int argc, char* argv[] )
 		// TODO: add listenfd to readfds.
 		// NOTE: check for FD_SET() in the man page of select().
 		FD_SET (listenfd, &readfds);
- 		max_fd = 0;
+ 		max_fd = listenfd;
 
 		// TODO: loop through all open connections (which you have stored in data structre, e.g. a vector) 
 		// and add them in readfds or writefds.
 		// NOTE: How to know if a socket should be added in readfds or writefds? Check the "state"
 		// field of ConnectionData for that socket.
+		printf( "connections.size = %zu\n", connections.size());
 		for( size_t i = 0; i < connections.size(); ++i )
 		{
 			printf( "Connection %zu: in state %d and has socket %d\n",
@@ -192,7 +193,6 @@ int main( int argc, char* argv[] )
 				FD_SET (connections[i].sock, &writefds);
 
 			max_fd = std::max(max_fd, connections[i].sock);
-			printf( "i = %zu, max_fd = %d\n", i,max_fd);
 		}
 		printf( "max_fd = %d\n", max_fd);
 
@@ -201,9 +201,7 @@ int main( int argc, char* argv[] )
 		// NOTE 2: pay attention to the first arguement of select. It should be the 
 		// maximum VALUE of all tracked file descriptors + 1.
 		int ret = select( max_fd+1, &readfds, &writefds, 0, 0 );
-		printf( "select done\n");
 		
-
 		if( -1 == ret )
 		{
 			perror( "select() failed" );
@@ -267,18 +265,27 @@ int main( int argc, char* argv[] )
 		{
 			if( FD_ISSET(connections[i].sock, &readfds) )
 			{
-				printf("FD_ISSET(connections[i].sock, &readfds)\n");
+				printf("socket %d at process_client_recv\n", connections[i].sock);
 				if( !process_client_recv(connections[i]))
 				{
 					FD_CLR(connections[i].sock, &readfds);
 					close( connections[i].sock );
+					//I tried to erase it at here, but i'm not familiar with vector. 
+					//So I manually made it invalid, is_invalid_connection() will return false, then it will be erased later. 
 					connections[i].sock = -1;
 				}
 			}
 			if( FD_ISSET(connections[i].sock, &writefds) )
 			{
-				printf("FD_ISSET(connections[i].sock, &writefds)\n");
-				process_client_send(connections[i]);
+				printf("socket %d at process_client_send\n", connections[i].sock);
+				if( !process_client_send(connections[i]))
+				{
+					FD_CLR(connections[i].sock, &writefds);
+					close( connections[i].sock );
+					//I tried to erase it at here, but i'm not familiar with vector. 
+					//So I manually made it invalid, is_invalid_connection() will return false, then it will be erased later. 
+					connections[i].sock = -1;
+				}
 			}
 		}
 
