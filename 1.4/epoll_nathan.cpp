@@ -188,7 +188,11 @@ int main(int argc, char *argv[])
 					// done - close connection
 					epoll_ctl(epollfd, EPOLL_CTL_DEL, ep_events[i].data.fd, NULL);
 					close( connData.sock );
-					connData.sock = -1;
+					for( size_t j = 0; j < connections.size(); ++j )
+					{
+						if (connData.sock == connections[j].sock)
+							connections[j].sock = -1;
+					}
 				}
 				
 				// Active connections
