@@ -98,7 +98,6 @@ int main(int argc, char *argv[])
 	// Loop forever
 	while (1)
 	{
-
 		// Wait for ready file descriptor list events
 		event_cnt = epoll_wait(epollfd, ep_events, MAXEVENTS, -1);
 		// Checks for errors
@@ -111,7 +110,6 @@ int main(int argc, char *argv[])
 		// Checks through all the available fd returned by epoll_wait
 		for (int i = 0; i < event_cnt; ++i)
 		{
-
 			// NEW INCOMING CLIENT
 			if (ep_events[i].data.fd == listenfd)
 			{
@@ -170,8 +168,6 @@ int main(int argc, char *argv[])
 			else
 			{
 				// New data available
-
-				
 				ConnectionData connData;
 				memset( &connData, 0, sizeof(connData) );
 				connData.sock = ep_events[i].data.fd;
@@ -194,51 +190,6 @@ int main(int argc, char *argv[])
 							connections[j].sock = -1;
 					}
 				}
-				
-				// Active connections
-				printf("Active connections: %ld\n", connections.size());
-				
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-				//ConnectionData* conn = (ConnectionData*) event.data.ptr;
-				//bool still_open;
-				//if (conn->state == eConnStateReceiving) {
-				//	still_open = process_client_recv(*conn);
-				//	event.events = EPOLLOUT;
-				//} else {
-				//	still_open = process_client_send(*conn);
-				//	event.events = EPOLLIN;
-				//}
-				//if (!still_open) {
-				//	close(conn->sock);
-				//	conn->sock = -1;
-				//	epoll_ctl(epollfd, EPOLL_CTL_DEL, conn->sock, NULL);
-				//}
-
-
-
-
-
-
-
-
-
-
-
-
 			}
 		}
 
@@ -250,6 +201,8 @@ int main(int argc, char *argv[])
 			connections.end()
 		);
 
+		// Active connections
+		printf("Active connections: %ld\n", connections.size());
 	}
 
 	// The program will never reach this part, but for demonstration purposes,
