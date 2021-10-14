@@ -28,6 +28,7 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <netinet/in.h>
 
 #include <vector>
@@ -44,7 +45,7 @@
 // no blocking operations other than select() should occur. (If an blocking
 // operation is attempted, a EAGAIN or EWOULDBLOCK error is raised, probably
 // indicating a bug in the code!)
-#define NONBLOCKING 0
+#define NONBLOCKING 1
 
 
 // Default port of the server. May be overridden by specifying a different
@@ -168,6 +169,58 @@ int main( int argc, char* argv[] )
 		socklen_t addrSize = sizeof(clientAddr);
 
 		// accept a single incoming connection
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		// Setup les filedescriptors read/write
+		fd_set readfds, writefds;
+
+		// Efface les collection read/write fd
+		FD_ZERO(&readfds);
+		FD_ZERO(&writefds);
+
+		// Numéro du plus grand descripteur + 1
+		int nfds_max_fd = listenfd + 1;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 		int clientfd = accept( listenfd, (sockaddr*)&clientAddr, &addrSize );
 
 		if( -1 == clientfd )
@@ -175,8 +228,6 @@ int main( int argc, char* argv[] )
 			perror( "accept() failed" );
 			continue; // attempt to accept a different client.
 		}
-
-		printf("%d", clientfd);
 
 #			if VERBOSE
 		// print some information about the new client
@@ -233,8 +284,6 @@ static bool process_client_recv( ConnectionData& cd )
 
 	// receive from socket
 	ssize_t ret = recv( cd.sock, cd.buffer, kTransferBufferSize, 0 );
-
-	printf("Return value is : %d", ret);
 
 	if( 0 == ret )
 	{
@@ -317,8 +366,6 @@ static int setup_server_socket( short port )
 		perror( "socket() failed" );
 		return -1;
 	}
-
-	printf("%d", fd);
 
 	// bind socket to local address
 	sockaddr_in servAddr; 

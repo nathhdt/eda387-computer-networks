@@ -1,20 +1,15 @@
 /*********************************************************** -- HEAD -{{{1- */
-/* Echo Server for Network API Lab: Part I in Internet Technology 2011.
+/* I/O multiplexing server with concurrent connections.
  *
- * Iterative server capable of accpeting and processing a single connection
- * at any given time. Data received from the connection is simply sent back
- * unmodified ("echoed").
- *
- * Build the server using e.g.
- * 		$ g++ -Wall -Wextra -o server-iter server-iterative.cpp
- *
- * Start using
- * 		$ ./server-iter
- * or
- * 		$ ./server-iter 31337
- * to listen on a port other than the default 5703.
+ * This is just a skeleton code, to help you design your solution.
+ * Search for: 
+ * 1) NOTEs: describing important aspects of the design that you should 
+ *	be aware of to help you towards your solution.
+ * 2) TODOs: that are the main points where you need to add code. 
+ * 
  */
 /******************************************************************* -}}}1- */
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,8 +39,8 @@
 // no blocking operations other than select() should occur. (If an blocking
 // operation is attempted, a EAGAIN or EWOULDBLOCK error is raised, probably
 // indicating a bug in the code!)
-#define NONBLOCKING 0
-
+// NOTE: make sure NONBLOCKING is set to 1 for this lab.
+#define NONBLOCKING 1
 
 // Default port of the server. May be overridden by specifying a different
 // port as the first command line argument to the server program.
@@ -161,62 +156,138 @@ int main( int argc, char* argv[] )
 	if( -1 == listenfd )
 		return 1;
 
+
+	// TODO: declare a data structure that will keep track of one ConnectionData 
+	// struct for each open connection. E.g. you can use a vector (see Appendix E 
+	// on the lab manual).
+	std::vector<ConnectionData> connections;
+	int max_fd;
+
 	// loop forever
 	while( 1 )
 	{
-		sockaddr_in clientAddr;
-		socklen_t addrSize = sizeof(clientAddr);
 
-		// accept a single incoming connection
-		int clientfd = accept( listenfd, (sockaddr*)&clientAddr, &addrSize );
+		fd_set readfds, writefds;
 
-		if( -1 == clientfd )
+		FD_ZERO( &readfds );
+		FD_ZERO( &writefds );
+
+
+		// TODO: add listenfd to readfds.
+		// NOTE: check for FD_SET() in the man page of select().
+		FD_SET (listenfd, &readfds);
+ 		max_fd = listenfd;
+
+		// TODO: loop through all open connections (which you have stored in data structre, e.g. a vector) 
+		// and add them in readfds or writefds.
+		// NOTE: How to know if a socket should be added in readfds or writefds? Check the "state"
+		// field of ConnectionData for that socket.
+		printf( "connections.size = %zu\n", connections.size());
+		for( size_t i = 0; i < connections.size(); ++i )
 		{
-			perror( "accept() failed" );
-			continue; // attempt to accept a different client.
+			printf( "Connection %zu: in state %d and has socket %d\n",
+				i, connections[i].state, connections[i].sock );
+			if(connections[i].state == eConnStateReceiving)
+				FD_SET (connections[i].sock, &readfds);
+			else if(connections[i].state == eConnStateSending)
+				FD_SET (connections[i].sock, &writefds);
+
+			max_fd = std::max(max_fd, connections[i].sock);
+		}
+		printf( "max_fd = %d\n", max_fd);
+
+		// wait for an event using select()
+		// NOTE 1: we only need one call to select() throughout our program.
+		// NOTE 2: pay attention to the first arguement of select. It should be the 
+		// maximum VALUE of all tracked file descriptors + 1.
+		int ret = select( max_fd+1, &readfds, &writefds, 0, 0 );
+		
+		if( -1 == ret )
+		{
+			perror( "select() failed" );
+			return -1;
 		}
 
-		printf("%d", clientfd);
+
+		// NOTE: if listenfd is in the readfds set after the return of select(), 
+		// it means we have a new incomming connection, which we need to serve, just as we did in Lab 1.2. 
+		if( FD_ISSET(listenfd, &readfds) )
+		{
+			sockaddr_in clientAddr;
+			socklen_t addrSize = sizeof(clientAddr);
+
+			// accept a single incoming connection
+			int clientfd = accept( listenfd, (sockaddr*)&clientAddr, &addrSize );
+
+			if( -1 == clientfd )
+			{
+				perror( "accept() failed" );
+				continue; // attempt to accept a different client.
+			}
 
 #			if VERBOSE
-		// print some information about the new client
-		char buff[128];
-		printf( "Connection from %s:%d -> socket %d\n",
-			inet_ntop( AF_INET, &clientAddr.sin_addr, buff, sizeof(buff) ),
-			ntohs(clientAddr.sin_port),
-			clientfd
-		);
-		fflush( stdout );
+			// print some information about the new client
+			char buff[128];
+			printf( "Connection from %s:%d -> socket %d\n",
+				inet_ntop( AF_INET, &clientAddr.sin_addr, buff, sizeof(buff) ),
+				ntohs(clientAddr.sin_port),
+				clientfd
+			);
+			fflush( stdout );
 #			endif
 
 #			if NONBLOCKING
-		// enable non-blocking sends and receives on this socket
-		if( !set_socket_nonblocking( clientfd ) )
-			continue;
+			// enable non-blocking sends and receives on this socket
+			if( !set_socket_nonblocking( clientfd ) )
+				continue;
 #			endif
 
-		// initialize connection data
-		ConnectionData connData;
-		memset( &connData, 0, sizeof(connData) );
+			// initialize connection data
+			ConnectionData connData;
+			memset( &connData, 0, sizeof(connData) );
 
-		connData.sock = clientfd;
-		connData.state = eConnStateReceiving;
+			connData.sock = clientfd;
+			connData.state = eConnStateReceiving;
 
-		// Repeatedly receive and re-send data from the connection. When
-		// the connection closes, process_client_*() will return false, no
-		// further processing is done.
-		bool processFurther = true;
-		while( processFurther )
-		{
-			while( processFurther && connData.state == eConnStateReceiving )
-				processFurther = process_client_recv( connData );
 
-			while( processFurther && connData.state == eConnStateSending )
-				processFurther = process_client_send( connData );
+			// TODO: add connData in your data structure so that you can keep track of that socket.
+			connections.push_back( connData );
 		}
 
-		// done - close connection
-		close( connData.sock );
+		// TODO: loop through your open sockets.
+		// For each socket: 
+		// 1) Use FD_ISSET to check if the socket is in the readfds or the writefds set, after the return of select(). 
+		// 2) If it is in the readfds set, receive data from that socket, using process_client_recv().
+		// 3) If it is in the writefds set, write send to that socket, using process_client_send().
+		// 4) Close and remove sockets if their connection was terminated.
+
+		for( size_t i = 0; i < connections.size(); ++i )
+		{
+			if( FD_ISSET(connections[i].sock, &readfds) )
+			{
+				printf("socket %d at process_client_recv\n", connections[i].sock);
+				if( !process_client_recv(connections[i]))
+				{
+					FD_CLR(connections[i].sock, &readfds);
+					close( connections[i].sock );
+					connections[i].sock = -1;
+				}
+			}
+			else if( FD_ISSET(connections[i].sock, &writefds) )
+			{
+				printf("socket %d at process_client_send\n", connections[i].sock);
+				if( !process_client_send(connections[i]))
+				{
+					FD_CLR(connections[i].sock, &writefds);
+					close( connections[i].sock );
+					connections[i].sock = -1;
+				}
+			}
+		}
+
+		connections.erase(
+			std::remove_if(
+			connections.begin(), connections.end(), &is_invalid_connection),connections.end());
 	}
 
 	// The program will never reach this part, but for demonstration purposes,
@@ -233,8 +304,6 @@ static bool process_client_recv( ConnectionData& cd )
 
 	// receive from socket
 	ssize_t ret = recv( cd.sock, cd.buffer, kTransferBufferSize, 0 );
-
-	printf("Return value is : %d", ret);
 
 	if( 0 == ret )
 	{
@@ -317,8 +386,6 @@ static int setup_server_socket( short port )
 		perror( "socket() failed" );
 		return -1;
 	}
-
-	printf("%d", fd);
 
 	// bind socket to local address
 	sockaddr_in servAddr; 
@@ -407,4 +474,4 @@ static bool is_invalid_connection( const ConnectionData& cd )
 	return cd.sock == -1;
 }
 
-//--///}}}1//////////////// vim:syntax=cpp:foldmethod=marker:ts=4:noexpandtab: 
+//--///}}}1////////////////
