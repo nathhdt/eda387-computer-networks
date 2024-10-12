@@ -1,2 +1,2 @@
 # eda387-computer-networks
-EDA387 Computer Networks Lab Chalmers
+chalmers university of technology - eda387 computer networks
